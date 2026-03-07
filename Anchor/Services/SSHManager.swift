@@ -95,12 +95,17 @@ final class SSHManager: ObservableObject {
 
     func connect(_ connection: SSHConnection) {
         lastError = nil
-        if monitor.launchSSH(connection: connection) != nil {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
-                self?.refreshProcesses()
+        backgroundQueue.async { [weak self] in
+            guard let self else { return }
+            if self.monitor.launchSSH(connection: connection) != nil {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                    self.refreshProcesses()
+                }
+            } else {
+                DispatchQueue.main.async {
+                    self.lastError = "Failed to launch SSH connection"
+                }
             }
-        } else {
-            lastError = "Failed to launch SSH connection"
         }
     }
 
