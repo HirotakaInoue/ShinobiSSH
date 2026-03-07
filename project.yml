@@ -1,0 +1,29 @@
+name: Anchor
+options:
+  bundleIdPrefix: com.anchor
+  deploymentTarget:
+    macOS: "13.0"
+  xcodeVersion: "15.0"
+  minimumXcodeGenVersion: "2.35.0"
+
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    MACOSX_DEPLOYMENT_TARGET: "13.0"
+
+targets:
+  Anchor:
+    type: application
+    platform: macOS
+    sources:
+      - Anchor
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.anchor.ssh-manager
+        PRODUCT_NAME: Anchor
+        INFOPLIST_FILE: Anchor/Info.plist
+        CODE_SIGN_ENTITLEMENTS: Anchor/Anchor.entitlements
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        LD_RUNPATH_SEARCH_PATHS: "@executable_path/../Frameworks"
+        ENABLE_HARDENED_RUNTIME: true
+        COMBINE_HIDPI_IMAGES: true
