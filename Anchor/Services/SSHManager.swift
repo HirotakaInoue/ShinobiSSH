@@ -1,6 +1,5 @@
 import Foundation
 import Combine
-import SwiftUI
 
 final class SSHManager: ObservableObject {
     @Published var savedConnections: [SSHConnection] = []
@@ -10,6 +9,7 @@ final class SSHManager: ObservableObject {
     private let store = ConnectionStore()
     private let monitor = ProcessMonitor()
     private var timer: Timer?
+    private let backgroundQueue = DispatchQueue(label: "com.anchor.process-monitor", qos: .utility)
 
     var activeCount: Int {
         activeProcesses.count
@@ -21,11 +21,6 @@ final class SSHManager: ObservableObject {
 
     var unmatchedProcesses: [SSHProcess] {
         activeProcesses.filter { $0.matchedConnectionID == nil }
-    }
-
-    var disconnectedConnections: [SSHConnection] {
-        let activeIDs = Set(activeProcesses.compactMap { $0.matchedConnectionID })
-        return savedConnections.filter { !activeIDs.contains($0.id) }
     }
 
     init() {
@@ -46,21 +41,25 @@ final class SSHManager: ObservableObject {
     }
 
     func refreshProcesses() {
-        var processes = monitor.fetchSSHProcesses()
+        let connections = savedConnections
+        backgroundQueue.async { [weak self] in
+            guard let self else { return }
+            var processes = self.monitor.fetchSSHProcesses()
 
-        for i in processes.indices {
-            if let match = findMatchingConnection(for: processes[i]) {
-                processes[i].matchedConnectionID = match.id
+            for i in processes.indices {
+                if let match = self.findMatchingConnection(for: processes[i], in: connections) {
+                    processes[i].matchedConnectionID = match.id
+                }
             }
-        }
 
-        DispatchQueue.main.async { [weak self] in
-            self?.activeProcesses = processes
+            DispatchQueue.main.async {
+                self.activeProcesses = processes
+            }
         }
     }
 
-    private func findMatchingConnection(for process: SSHProcess) -> SSHConnection? {
-        savedConnections.first { conn in
+    private func findMatchingConnection(for process: SSHProcess, in connections: [SSHConnection]) -> SSHConnection? {
+        connections.first { conn in
             let hostMatch = conn.host == process.host
             let userMatch = conn.user.isEmpty || conn.user == process.user
             let portMatch = conn.port == process.port
@@ -107,19 +106,24 @@ final class SSHManager: ObservableObject {
 
     func disconnect(process: SSHProcess) {
         lastError = nil
-        if monitor.terminateProcess(pid: process.pid) {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+        let pid = process.pid
+        backgroundQueue.async { [weak self] in
+            _ = self?.monitor.terminateProcess(pid: pid)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                 self?.refreshProcesses()
             }
         }
     }
 
     func disconnectAll() {
-        for process in activeProcesses {
-            _ = monitor.terminateProcess(pid: process.pid)
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
-            self?.refreshProcesses()
+        let pids = activeProcesses.map { $0.pid }
+        backgroundQueue.async { [weak self] in
+            for pid in pids {
+                _ = self?.monitor.terminateProcess(pid: pid)
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                self?.refreshProcesses()
+            }
         }
     }
 

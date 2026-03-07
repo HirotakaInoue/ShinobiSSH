@@ -10,12 +10,12 @@ struct MenuBarView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            if !manager.activeProcesses.isEmpty {
+            if !manager.matchedProcesses.isEmpty {
                 activeSection
             }
 
             if !manager.savedConnections.isEmpty {
-                if !manager.activeProcesses.isEmpty {
+                if !manager.matchedProcesses.isEmpty {
                     sectionDivider
                 }
                 savedSection
@@ -77,7 +77,7 @@ struct MenuBarView: View {
         VStack(alignment: .leading, spacing: 0) {
             sectionHeader(
                 title: "Active",
-                count: manager.activeCount,
+                count: manager.matchedProcesses.count,
                 color: .green
             ) {
                 if manager.activeCount > 1 {
@@ -105,13 +105,12 @@ struct MenuBarView: View {
     }
 
     private var activeRows: [(name: String, detail: String, process: SSHProcess)] {
-        manager.activeProcesses.map { process in
-            if let connID = process.matchedConnectionID,
-               let conn = manager.savedConnections.first(where: { $0.id == connID }) {
-                return (name: conn.name, detail: conn.displayHost, process: process)
-            } else {
-                return (name: process.displayName, detail: "PID: \(process.pid)", process: process)
+        manager.matchedProcesses.compactMap { process in
+            guard let connID = process.matchedConnectionID,
+                  let conn = manager.savedConnections.first(where: { $0.id == connID }) else {
+                return nil
             }
+            return (name: conn.name, detail: conn.displayHost, process: process)
         }
     }
 

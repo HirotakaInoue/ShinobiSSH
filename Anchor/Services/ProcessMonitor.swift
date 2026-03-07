@@ -27,54 +27,27 @@ final class ProcessMonitor {
 
     func terminateProcess(pid: Int) -> Bool {
         kill(Int32(pid), SIGTERM)
-        usleep(200_000)
 
-        if kill(Int32(pid), 0) == 0 {
-            kill(Int32(pid), SIGKILL)
+        for _ in 0..<10 {
+            usleep(50_000) // 50ms intervals, total max 500ms
+            if kill(Int32(pid), 0) != 0 { return true }
         }
+
+        kill(Int32(pid), SIGKILL)
         return true
     }
 
     func launchSSH(connection: SSHConnection) -> Int32? {
-        let args = connection.sshCommand
-        guard args.count >= 2 else { return nil }
-
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: args[0])
-        process.arguments = Array(args.dropFirst())
-
         let termApp = terminalApp()
-        if let app = termApp {
-            return launchInTerminal(app: app, connection: connection)
-        }
-
-        process.standardInput = FileHandle.nullDevice
-        process.standardOutput = FileHandle.nullDevice
-        process.standardError = FileHandle.nullDevice
-
-        do {
-            try process.run()
-            return process.processIdentifier
-        } catch {
-            return nil
-        }
+        return launchInTerminal(app: termApp, connection: connection)
     }
 
     private func launchInTerminal(app: String, connection: SSHConnection) -> Int32? {
         let sshArgs = connection.sshCommand
-        let sshCommand = sshArgs.map { arg in
-            arg.contains(" ") ? "'\(arg)'" : arg
-        }.joined(separator: " ")
+        let sshCommand = sshArgs.map { escapeForAppleScript($0) }.joined(separator: " ")
 
         let script: String
-        if app == "Terminal" {
-            script = """
-            tell application "Terminal"
-                activate
-                do script "\(sshCommand)"
-            end tell
-            """
-        } else if app == "iTerm" {
+        if app == "iTerm" {
             script = """
             tell application "iTerm"
                 activate
@@ -82,7 +55,12 @@ final class ProcessMonitor {
             end tell
             """
         } else {
-            return nil
+            script = """
+            tell application "Terminal"
+                activate
+                do script "\(sshCommand)"
+            end tell
+            """
         }
 
         let process = Process()
@@ -94,13 +72,23 @@ final class ProcessMonitor {
         do {
             try process.run()
             process.waitUntilExit()
-            return 0
+            return process.terminationStatus == 0 ? 0 : nil
         } catch {
             return nil
         }
     }
 
-    private func terminalApp() -> String? {
+    private func escapeForAppleScript(_ arg: String) -> String {
+        let escaped = arg
+            .replacingOccurrences(of: "\\", with: "\\\\")
+            .replacingOccurrences(of: "\"", with: "\\\"")
+        if arg.contains(" ") {
+            return "'\(arg.replacingOccurrences(of: "'", with: "'\\''"))'"
+        }
+        return escaped
+    }
+
+    private func terminalApp() -> String {
         let apps = ["iTerm", "Terminal"]
         for app in apps {
             let check = shell("/usr/bin/osascript", arguments: [
@@ -142,12 +130,14 @@ final class ProcessMonitor {
 
         do {
             try process.run()
-            process.waitUntilExit()
         } catch {
             return ""
         }
 
+        // Read data before waitUntilExit to avoid pipe buffer deadlock
         let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        process.waitUntilExit()
+
         return String(data: data, encoding: .utf8) ?? ""
     }
 }

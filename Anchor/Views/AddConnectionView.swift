@@ -1,4 +1,5 @@
 import SwiftUI
+import Combine
 
 struct AddConnectionView: View {
     @ObservedObject var manager: SSHManager
@@ -70,8 +71,11 @@ struct AddConnectionView: View {
                 TextField("22", text: $port)
                     .textFieldStyle(.roundedBorder)
                     .frame(width: 80)
-                    .onChange(of: port) { newValue in
-                        port = newValue.filter { $0.isNumber }
+                    .onReceive(Just(port)) { newValue in
+                        let filtered = newValue.filter { $0.isNumber }
+                        if filtered != newValue {
+                            port = filtered
+                        }
                     }
                 Spacer()
             }
@@ -122,8 +126,9 @@ struct AddConnectionView: View {
         HStack {
             if isEditing {
                 Button("Delete", role: .destructive) {
-                    if let id = editingID {
-                        manager.savedConnections.removeAll { $0.id == id }
+                    if let id = editingID,
+                       let conn = manager.savedConnections.first(where: { $0.id == id }) {
+                        manager.deleteConnection(conn)
                     }
                     dismiss()
                 }

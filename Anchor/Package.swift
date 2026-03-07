@@ -7,7 +7,9 @@ let package = Package(
     targets: [
         .executableTarget(
             name: "Anchor",
-            path: "."
+            path: ".",
+            exclude: ["Info.plist", "Anchor.entitlements", "Assets.xcassets"],
+            sources: ["AnchorApp.swift", "Models", "Services", "Views"]
         ),
     ]
 )
