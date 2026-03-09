@@ -211,14 +211,7 @@ struct MenuBarView: View {
                 Spacer()
             }
 
-            Button {
-                NSApplication.shared.terminate(nil)
-            } label: {
-                Label("Quit", systemImage: "power")
-                    .font(.caption)
-            }
-            .buttonStyle(.plain)
-        }
+}
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
     }

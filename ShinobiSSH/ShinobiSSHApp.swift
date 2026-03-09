@@ -29,7 +29,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         )
 
         if let button = statusItem.button {
-            button.action = #selector(togglePopover)
+            button.sendAction(on: [.leftMouseUp, .rightMouseUp])
+            button.action = #selector(statusItemClicked)
             button.target = self
         }
 
@@ -54,6 +55,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         } else {
             button.title = ""
         }
+    }
+
+    @objc private func statusItemClicked() {
+        guard let event = NSApp.currentEvent else { return }
+        if event.type == .rightMouseUp {
+            showContextMenu()
+        } else {
+            togglePopover()
+        }
+    }
+
+    private func showContextMenu() {
+        let menu = NSMenu()
+        menu.addItem(NSMenuItem(title: "Quit ShinobiSSH", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
+        statusItem.menu = menu
+        statusItem.button?.performClick(nil)
+        statusItem.menu = nil
     }
 
     @objc private func togglePopover() {
