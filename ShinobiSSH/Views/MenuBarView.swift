@@ -96,6 +96,7 @@ struct MenuBarView: View {
                 ActiveConnectionRow(
                     name: row.name,
                     detail: row.detail,
+                    forwarding: row.forwarding,
                     onDisconnect: {
                         manager.disconnect(process: row.process)
                     }
@@ -104,13 +105,13 @@ struct MenuBarView: View {
         }
     }
 
-    private var activeRows: [(name: String, detail: String, process: SSHProcess)] {
+    private var activeRows: [(name: String, detail: String, forwarding: String?, process: SSHProcess)] {
         manager.matchedProcesses.compactMap { process in
             guard let connID = process.matchedConnectionID,
                   let conn = manager.savedConnections.first(where: { $0.id == connID }) else {
                 return nil
             }
-            return (name: conn.name, detail: conn.displayHost, process: process)
+            return (name: conn.name, detail: conn.displayHost, forwarding: conn.forwardingSummary, process: process)
         }
     }
 
@@ -248,6 +249,7 @@ struct MenuBarView: View {
 struct ActiveConnectionRow: View {
     let name: String
     let detail: String
+    var forwarding: String?
     let onDisconnect: () -> Void
     @State private var isHovering = false
 
@@ -266,6 +268,12 @@ struct ActiveConnectionRow: View {
                     .font(.caption2)
                     .foregroundColor(.secondary)
                     .lineLimit(1)
+                if let forwarding {
+                    Text(forwarding)
+                        .font(.caption2)
+                        .foregroundColor(.secondary.opacity(0.8))
+                        .lineLimit(1)
+                }
             }
 
             Spacer()
@@ -319,6 +327,12 @@ struct SavedConnectionRow: View {
                     .font(.caption2)
                     .foregroundColor(.secondary)
                     .lineLimit(1)
+                if let forwarding = connection.forwardingSummary {
+                    Text(forwarding)
+                        .font(.caption2)
+                        .foregroundColor(.secondary.opacity(0.8))
+                        .lineLimit(1)
+                }
             }
 
             Spacer()
@@ -405,6 +419,12 @@ struct UnmatchedProcessRow: View {
                     .font(.caption2)
                     .foregroundColor(.secondary)
                     .lineLimit(1)
+                if let forwarding = process.forwardingSummary {
+                    Text(forwarding)
+                        .font(.caption2)
+                        .foregroundColor(.secondary.opacity(0.8))
+                        .lineLimit(1)
+                }
             }
 
             Spacer()

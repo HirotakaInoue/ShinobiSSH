@@ -63,7 +63,9 @@ final class SSHManager: ObservableObject {
             let hostMatch = conn.host == process.host
             let userMatch = conn.user.isEmpty || conn.user == process.user
             let portMatch = conn.port == process.port
-            return hostMatch && userMatch && portMatch
+            let forwardMatch = Set(conn.localForwards.map { $0.argumentValue })
+                == Set(process.localForwards.map { $0.argumentValue })
+            return hostMatch && userMatch && portMatch && forwardMatch
         }
     }
 
@@ -145,7 +147,9 @@ final class SSHManager: ObservableObject {
             name: name,
             host: process.host,
             user: process.user,
-            port: process.port
+            port: process.port,
+            localForwards: process.localForwards,
+            noRemoteCommand: process.hasNoRemoteCommand
         )
         addConnection(connection)
         refreshProcesses()

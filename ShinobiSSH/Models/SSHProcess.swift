@@ -7,6 +7,8 @@ struct SSHProcess: Identifiable, Hashable {
     let host: String
     let user: String
     let port: Int
+    let localForwards: [LocalForward]
+    let hasNoRemoteCommand: Bool
     var matchedConnectionID: UUID?
 
     init(pid: Int, command: String) {
@@ -18,6 +20,8 @@ struct SSHProcess: Identifiable, Hashable {
         self.host = parsed.host
         self.user = parsed.user
         self.port = parsed.port
+        self.localForwards = parsed.localForwards
+        self.hasNoRemoteCommand = parsed.noRemoteCommand
         self.matchedConnectionID = nil
     }
 
@@ -28,12 +32,19 @@ struct SSHProcess: Identifiable, Hashable {
         return "\(user)@\(host)"
     }
 
-    private static func parseSSHCommand(_ command: String) -> (host: String, user: String, port: Int) {
+    var forwardingSummary: String? {
+        guard !localForwards.isEmpty else { return nil }
+        return localForwards.map { $0.displayString }.joined(separator: ", ")
+    }
+
+    private static func parseSSHCommand(_ command: String) -> (host: String, user: String, port: Int, localForwards: [LocalForward], noRemoteCommand: Bool) {
         let parts = command.components(separatedBy: .whitespaces).filter { !$0.isEmpty }
 
         var host = ""
         var user = ""
         var port = 22
+        var localForwards: [LocalForward] = []
+        var noRemoteCommand = false
         var skipNext = false
 
         for (index, part) in parts.enumerated() {
@@ -52,14 +63,24 @@ struct SSHProcess: Identifiable, Hashable {
                     port = Int(parts[index + 1]) ?? 22
                     skipNext = true
                 }
+            } else if part == "-L" {
+                if index + 1 < parts.count {
+                    if let forward = parseLocalForward(parts[index + 1]) {
+                        localForwards.append(forward)
+                    }
+                    skipNext = true
+                }
             } else if part == "-i" || part == "-o" || part == "-F"
                         || part == "-J" || part == "-W" || part == "-w"
-                        || part == "-L" || part == "-R" || part == "-D"
+                        || part == "-R" || part == "-D"
                         || part == "-E" || part == "-S" || part == "-b"
                         || part == "-c" || part == "-e" || part == "-m"
                         || part == "-O" || part == "-Q" {
                 skipNext = true
             } else if part.hasPrefix("-") {
+                if part.contains("N") {
+                    noRemoteCommand = true
+                }
                 continue
             } else if part.hasSuffix("ssh") || part.hasSuffix("ssh:") {
                 continue
@@ -76,6 +97,21 @@ struct SSHProcess: Identifiable, Hashable {
             }
         }
 
-        return (host, user, port)
+        return (host, user, port, localForwards, noRemoteCommand)
+    }
+
+    private static func parseLocalForward(_ value: String) -> LocalForward? {
+        // Format: localPort:remoteHost:remotePort
+        let components = value.split(separator: ":", maxSplits: 2)
+        guard components.count == 3,
+              let localPort = Int(components[0]),
+              let remotePort = Int(components[2]) else {
+            return nil
+        }
+        return LocalForward(
+            localPort: localPort,
+            remoteHost: String(components[1]),
+            remotePort: remotePort
+        )
     }
 }

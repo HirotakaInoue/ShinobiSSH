@@ -10,6 +10,9 @@ struct AddConnectionView: View {
     @State private var user: String
     @State private var port: String
     @State private var identityFile: String
+    @State private var localForwards: [LocalForward]
+    @State private var noRemoteCommand: Bool
+    @State private var forceIPv4: Bool
 
     private let editingID: UUID?
     private let isEditing: Bool
@@ -23,6 +26,9 @@ struct AddConnectionView: View {
         _user = State(initialValue: editing?.user ?? "")
         _port = State(initialValue: String(editing?.port ?? 22))
         _identityFile = State(initialValue: editing?.identityFile ?? "")
+        _localForwards = State(initialValue: editing?.localForwards ?? [])
+        _noRemoteCommand = State(initialValue: editing?.noRemoteCommand ?? false)
+        _forceIPv4 = State(initialValue: editing?.forceIPv4 ?? false)
     }
 
     private var isValid: Bool {
@@ -99,11 +105,102 @@ struct AddConnectionView: View {
                 }
             }
 
+            sshOptionsSection
+            portForwardingSection
+
             if !host.isEmpty {
                 previewCommand
             }
         }
         .padding(16)
+    }
+
+    // MARK: - SSH Options
+
+    private var sshOptionsSection: some View {
+        DisclosureGroup("SSH Options") {
+            VStack(alignment: .leading, spacing: 8) {
+                Toggle(isOn: $noRemoteCommand) {
+                    HStack(spacing: 4) {
+                        Text("-N")
+                            .font(.system(.caption, design: .monospaced))
+                            .fontWeight(.medium)
+                        Text("No remote command")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+
+                Toggle(isOn: $forceIPv4) {
+                    HStack(spacing: 4) {
+                        Text("-4")
+                            .font(.system(.caption, design: .monospaced))
+                            .fontWeight(.medium)
+                        Text("IPv4 only")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
+            .padding(.top, 4)
+        }
+        .font(.caption)
+        .foregroundColor(.secondary)
+    }
+
+    // MARK: - Port Forwarding
+
+    private var portForwardingSection: some View {
+        DisclosureGroup("Port Forwarding (-L)") {
+            VStack(spacing: 8) {
+                ForEach(Array(localForwards.enumerated()), id: \.element.id) { index, forward in
+                    HStack(spacing: 4) {
+                        TextField("Local", text: Binding(
+                            get: { String(localForwards[index].localPort) },
+                            set: { localForwards[index].localPort = Int($0) ?? 0 }
+                        ))
+                        .textFieldStyle(.roundedBorder)
+                        .frame(width: 60)
+
+                        Text(":")
+                            .foregroundColor(.secondary)
+
+                        TextField("Remote Host", text: $localForwards[index].remoteHost)
+                            .textFieldStyle(.roundedBorder)
+
+                        Text(":")
+                            .foregroundColor(.secondary)
+
+                        TextField("Port", text: Binding(
+                            get: { String(localForwards[index].remotePort) },
+                            set: { localForwards[index].remotePort = Int($0) ?? 0 }
+                        ))
+                        .textFieldStyle(.roundedBorder)
+                        .frame(width: 60)
+
+                        Button {
+                            localForwards.remove(at: index)
+                        } label: {
+                            Image(systemName: "minus.circle.fill")
+                                .foregroundColor(.red)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .font(.caption)
+                }
+
+                Button {
+                    localForwards.append(LocalForward())
+                } label: {
+                    Label("Add Forward", systemImage: "plus.circle")
+                        .font(.caption)
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.top, 4)
+        }
+        .font(.caption)
+        .foregroundColor(.secondary)
     }
 
     private var previewCommand: some View {
@@ -157,7 +254,10 @@ struct AddConnectionView: View {
             host: host.trimmingCharacters(in: .whitespaces),
             user: user.trimmingCharacters(in: .whitespaces),
             port: Int(port) ?? 22,
-            identityFile: identityFile.isEmpty ? nil : identityFile
+            identityFile: identityFile.isEmpty ? nil : identityFile,
+            localForwards: localForwards,
+            noRemoteCommand: noRemoteCommand,
+            forceIPv4: forceIPv4
         )
 
         if isEditing {
@@ -174,6 +274,12 @@ struct AddConnectionView: View {
         let trimmedUser = user.trimmingCharacters(in: .whitespaces)
         let trimmedHost = host.trimmingCharacters(in: .whitespaces)
 
+        if forceIPv4 {
+            parts.append("-4")
+        }
+        if noRemoteCommand {
+            parts.append("-N")
+        }
         if !trimmedUser.isEmpty {
             parts.append("-l \(trimmedUser)")
         }
@@ -182,6 +288,9 @@ struct AddConnectionView: View {
         }
         if !identityFile.isEmpty {
             parts.append("-i \(identityFile)")
+        }
+        for forward in localForwards {
+            parts.append("-L \(forward.argumentValue)")
         }
         parts.append(trimmedHost)
         return parts.joined(separator: " ")
