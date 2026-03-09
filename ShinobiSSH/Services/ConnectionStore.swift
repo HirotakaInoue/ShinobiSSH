@@ -6,7 +6,7 @@ final class ConnectionStore {
     init() {
         let configDir = FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent(".config")
-            .appendingPathComponent("anchor")
+            .appendingPathComponent("shinobishsh")
         try? FileManager.default.createDirectory(at: configDir, withIntermediateDirectories: true)
         self.fileURL = configDir.appendingPathComponent("connections.json")
     }

@@ -1,7 +1,7 @@
 import SwiftUI
 
 @main
-struct AnchorApp: App {
+struct ShinobiSSHApp: App {
     @StateObject private var manager = SSHManager()
 
     var body: some Scene {

@@ -1,6 +1,6 @@
-name: Anchor
+name: ShinobiSSH
 options:
-  bundleIdPrefix: com.anchor
+  bundleIdPrefix: com.shinobishsh
   deploymentTarget:
     macOS: "13.0"
   xcodeVersion: "15.0"
@@ -12,17 +12,17 @@ settings:
     MACOSX_DEPLOYMENT_TARGET: "13.0"
 
 targets:
-  Anchor:
+  ShinobiSSH:
     type: application
     platform: macOS
     sources:
-      - Anchor
+      - ShinobiSSH
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.anchor.ssh-manager
-        PRODUCT_NAME: Anchor
-        INFOPLIST_FILE: Anchor/Info.plist
-        CODE_SIGN_ENTITLEMENTS: Anchor/Anchor.entitlements
+        PRODUCT_BUNDLE_IDENTIFIER: com.shinobishsh.ssh-manager
+        PRODUCT_NAME: ShinobiSSH
+        INFOPLIST_FILE: ShinobiSSH/Info.plist
+        CODE_SIGN_ENTITLEMENTS: ShinobiSSH/ShinobiSSH.entitlements
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         LD_RUNPATH_SEARCH_PATHS: "@executable_path/../Frameworks"
         ENABLE_HARDENED_RUNTIME: true

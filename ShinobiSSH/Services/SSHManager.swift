@@ -9,7 +9,7 @@ final class SSHManager: ObservableObject {
     private let store = ConnectionStore()
     private let monitor = ProcessMonitor()
     private var timer: Timer?
-    private let backgroundQueue = DispatchQueue(label: "com.anchor.process-monitor", qos: .utility)
+    private let backgroundQueue = DispatchQueue(label: "com.shinobishsh.process-monitor", qos: .utility)
 
     var activeCount: Int {
         activeProcesses.count

@@ -1,15 +1,15 @@
 # CLAUDE.md
 
-This file provides guidance for AI assistants working with the Anchor codebase.
+This file provides guidance for AI assistants working with the ShinobiSSH codebase.
 
 ## Project Overview
 
-Anchor is a native macOS menu bar application for managing SSH connections. It monitors running SSH processes, allows one-click connect/disconnect, and persists saved connections to disk.
+ShinobiSSH is a native macOS menu bar application for managing SSH connections. It monitors running SSH processes, allows one-click connect/disconnect, and persists saved connections to disk.
 
 - **Language**: Swift 5.9+ / SwiftUI
 - **Platform**: macOS 13.0 (Ventura) or later
 - **UI**: Menu bar popover (`MenuBarExtra` with `.window` style)
-- **Config location**: `~/.config/anchor/connections.json`
+- **Config location**: `~/.config/shinobishsh/connections.json`
 
 ## Build & Run Commands
 
@@ -17,24 +17,24 @@ Anchor is a native macOS menu bar application for managing SSH connections. It m
 
 ```bash
 brew install xcodegen        # Install XcodeGen (one-time)
-xcodegen generate            # Generate Anchor.xcodeproj
-open Anchor.xcodeproj        # Open in Xcode, then Cmd+R
+xcodegen generate            # Generate ShinobiSSH.xcodeproj
+open ShinobiSSH.xcodeproj    # Open in Xcode, then Cmd+R
 ```
 
 ### Command Line (Swift Package Manager)
 
 ```bash
-cd Anchor
+cd ShinobiSSH
 swift build                  # Debug build
-swift build -c release       # Release build → .build/release/Anchor
+swift build -c release       # Release build → .build/release/ShinobiSSH
 swift test                   # Run tests (none currently exist)
 ```
 
 ## Project Structure
 
 ```
-Anchor/
-├── AnchorApp.swift                - Entry point, MenuBarExtra setup
+ShinobiSSH/
+├── ShinobiSSHApp.swift            - Entry point, MenuBarExtra setup
 ├── Package.swift                  - Swift Package Manager config
 ├── Models/
 │   ├── SSHConnection.swift        - Saved connection model (Codable)
@@ -52,9 +52,9 @@ Anchor/
 
 The app follows an MVVM-like pattern centered around `SSHManager` as the single source of truth:
 
-- **AnchorApp.swift** → Creates `MenuBarExtra` with a window-style popover. Instantiates `SSHManager` as `@StateObject`
+- **ShinobiSSHApp.swift** → Creates `MenuBarExtra` with a window-style popover. Instantiates `SSHManager` as `@StateObject`
 - **SSHManager** → `ObservableObject` holding `@Published` state (`savedConnections`, `activeProcesses`, `lastError`). Owns `ConnectionStore` and `ProcessMonitor`. Polls SSH processes every 3 seconds via `Timer`. Process detection runs on a background `DispatchQueue`
-- **ConnectionStore** → Reads/writes `[SSHConnection]` to `~/.config/anchor/connections.json`
+- **ConnectionStore** → Reads/writes `[SSHConnection]` to `~/.config/shinobishsh/connections.json`
 - **ProcessMonitor** → Executes `ps -eo pid,command` to find SSH processes, parses output into `SSHProcess` structs. Launches SSH via AppleScript (Terminal.app or iTerm). Terminates processes with `SIGTERM`/`SIGKILL`
 - **MenuBarView** → Main UI with three sections: Active (matched), Connections (saved), Other SSH (unmatched). Hover reveals action buttons
 - **AddConnectionView** → Form for creating/editing connections with live command preview

@@ -1,4 +1,4 @@
-# Anchor
+# ShinobiSSH
 
 A native macOS menu bar application for managing SSH connections.
 
@@ -11,8 +11,8 @@ A native macOS menu bar application for managing SSH connections.
 - **Connection Management** - Register SSH connections with custom names for quick access.
 - **Real-time Monitoring** - Automatically detects all running SSH processes every 3 seconds.
 - **One-click Connect/Disconnect** - Launch SSH sessions in Terminal.app or iTerm. Terminate with a single click.
-- **Unregistered SSH Detection** - Detects SSH connections started outside of Anchor and allows managing or saving them.
-- **Persistent Storage** - Saved connections persist across app restarts in `~/.config/anchor/connections.json`.
+- **Unregistered SSH Detection** - Detects SSH connections started outside of ShinobiSSH and allows managing or saving them.
+- **Persistent Storage** - Saved connections persist across app restarts in `~/.config/shinobishsh/connections.json`.
 
 ## Menu Bar UX
 
@@ -45,7 +45,7 @@ The popover displays three sections:
 2. Generate the Xcode project and open it:
    ```bash
    xcodegen generate
-   open Anchor.xcodeproj
+   open ShinobiSSH.xcodeproj
    ```
 
 3. Build and run (Cmd+R) in Xcode.
@@ -53,15 +53,15 @@ The popover displays three sections:
 ### Option 2: Command Line
 
 ```bash
-cd Anchor
+cd ShinobiSSH
 swift build -c release
 ```
 
-The binary will be at `.build/release/Anchor`.
+The binary will be at `.build/release/ShinobiSSH`.
 
 ## Usage
 
-1. Launch Anchor - it appears as a terminal icon in the menu bar.
+1. Launch ShinobiSSH - it appears as a terminal icon in the menu bar.
 2. Click the icon to open the popover.
 3. Click **+ New** to register an SSH connection.
 4. Click the play button or use the context menu to connect.
@@ -73,7 +73,7 @@ The binary will be at `.build/release/Anchor`.
 Connections are stored in:
 
 ```
-~/.config/anchor/connections.json
+~/.config/shinobishsh/connections.json
 ```
 
 Each connection stores:
