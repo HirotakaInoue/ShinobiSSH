@@ -19,6 +19,7 @@ targets:
       - path: ShinobiSSH
         excludes:
           - Package.swift
+          - .build
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.shinobishsh.ssh-manager
