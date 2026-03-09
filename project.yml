@@ -16,7 +16,9 @@ targets:
     type: application
     platform: macOS
     sources:
-      - ShinobiSSH
+      - path: ShinobiSSH
+        excludes:
+          - Package.swift
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.shinobishsh.ssh-manager
