@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1024" y2="1024" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#1e1e2e"/>
+      <stop offset="100%" stop-color="#2a2a3e"/>
+    </linearGradient>
+    <linearGradient id="titlebar" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#3a3a4e"/>
+      <stop offset="100%" stop-color="#2e2e42"/>
+    </linearGradient>
+    <linearGradient id="shuriken" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#a6e3a1"/>
+      <stop offset="100%" stop-color="#94e2d5"/>
+    </linearGradient>
+  </defs>
+
+  <!-- App background -->
+  <rect x="32" y="32" width="960" height="960" rx="220" ry="220" fill="#11111b"/>
+
+  <!-- Terminal window -->
+  <rect x="120" y="160" width="784" height="580" rx="24" ry="24" fill="url(#bg)"/>
+
+  <!-- Title bar -->
+  <rect x="120" y="160" width="784" height="56" rx="24" ry="24" fill="url(#titlebar)"/>
+  <rect x="120" y="192" width="784" height="24" fill="url(#titlebar)"/>
+
+  <!-- Traffic lights -->
+  <circle cx="176" cy="188" r="10" fill="#f38ba8"/>
+  <circle cx="212" cy="188" r="10" fill="#f9e2af"/>
+  <circle cx="248" cy="188" r="10" fill="#a6e3a1"/>
+
+  <!-- Title text -->
+  <text x="512" y="196" text-anchor="middle" font-family="SF Mono, Menlo, monospace" font-size="20" fill="#6c7086">shinobi@ssh ~ </text>
+
+  <!-- Terminal content area -->
+
+  <!-- Line 1: command prompt -->
+  <text x="168" y="300" font-family="SF Mono, Menlo, monospace" font-size="36" fill="#a6e3a1">$</text>
+  <text x="206" y="300" font-family="SF Mono, Menlo, monospace" font-size="36" fill="#cdd6f4"> ssh ninja@server</text>
+
+  <!-- Line 2: connecting dots + shuriken trail -->
+  <text x="168" y="370" font-family="SF Mono, Menlo, monospace" font-size="36" fill="#6c7086">connecting</text>
+  <!-- Dots trail -->
+  <circle cx="490" cy="362" r="5" fill="#6c7086" opacity="0.3"/>
+  <circle cx="520" cy="362" r="5" fill="#6c7086" opacity="0.5"/>
+  <circle cx="550" cy="362" r="5" fill="#94e2d5" opacity="0.6"/>
+  <circle cx="580" cy="362" r="6" fill="#94e2d5" opacity="0.7"/>
+  <circle cx="612" cy="362" r="6" fill="#a6e3a1" opacity="0.8"/>
+
+  <!-- Flying shuriken -->
+  <g transform="translate(680,362) rotate(20)">
+    <path d="M0,-28 L8,-8 L28,0 L8,8 L0,28 L-8,8 L-28,0 L-8,-8 Z"
+          fill="url(#shuriken)"/>
+    <circle cx="0" cy="0" r="5" fill="#1e1e2e"/>
+  </g>
+
+  <!-- Line 3: connected message -->
+  <text x="168" y="440" font-family="SF Mono, Menlo, monospace" font-size="36" fill="#a6e3a1">connected!</text>
+
+  <!-- Line 4: cursor blinking -->
+  <text x="168" y="510" font-family="SF Mono, Menlo, monospace" font-size="36" fill="#a6e3a1">$</text>
+  <rect x="206" y="488" width="20" height="30" rx="2" fill="#cdd6f4" opacity="0.8"/>
+
+  <!-- SSH label at bottom -->
+  <text x="512" y="880" text-anchor="middle" font-family="SF Mono, Menlo, monospace" font-size="72" font-weight="600" fill="#cdd6f4" letter-spacing="20" opacity="0.6">ShinobiSSH</text>
+</svg>
