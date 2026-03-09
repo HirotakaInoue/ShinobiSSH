@@ -42,7 +42,7 @@ The popover displays three sections:
    brew install xcodegen
    ```
 
-2. Generate the Xcode project and open it:
+2. Generate the Xcode project and open it (run from the repository root):
    ```bash
    xcodegen generate
    open ShinobiSSH.xcodeproj
@@ -52,12 +52,17 @@ The popover displays three sections:
 
 ### Option 2: Command Line
 
-```bash
-cd ShinobiSSH
-swift build -c release
-```
+1. Move into the Swift package directory:
+   ```bash
+   cd ShinobiSSH
+   ```
 
-The binary will be at `.build/release/ShinobiSSH`.
+2. Build:
+   ```bash
+   swift build -c release
+   ```
+
+The binary will be at `ShinobiSSH/.build/release/ShinobiSSH`.
 
 ## Usage
 
