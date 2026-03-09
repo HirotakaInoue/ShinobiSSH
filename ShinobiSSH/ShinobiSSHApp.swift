@@ -2,29 +2,76 @@ import SwiftUI
 
 @main
 struct ShinobiSSHApp: App {
-    @StateObject private var manager = SSHManager()
+    @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
     var body: some Scene {
-        MenuBarExtra {
-            MenuBarView(manager: manager)
-        } label: {
-            menuBarLabel
+        Settings {
+            EmptyView()
         }
-        .menuBarExtraStyle(.window)
+    }
+}
+
+final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
+    private var statusItem: NSStatusItem!
+    private let popover = NSPopover()
+    private let manager = SSHManager()
+    private var cancellable: Any?
+
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+        updateStatusBarIcon()
+
+        popover.contentSize = NSSize(width: 320, height: 400)
+        popover.behavior = .applicationDefined
+        popover.delegate = self
+        popover.contentViewController = NSHostingController(
+            rootView: MenuBarView(manager: manager)
+        )
+
+        if let button = statusItem.button {
+            button.action = #selector(togglePopover)
+            button.target = self
+        }
+
+        // Update menu bar icon when active count changes
+        cancellable = manager.$activeProcesses
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                self?.updateStatusBarIcon()
+            }
     }
 
-    private var menuBarLabel: some View {
-        HStack(spacing: 3) {
-            Image(systemName: manager.activeCount > 0
-                  ? "terminal.fill"
-                  : "terminal")
-                .font(.system(size: 12))
+    private func updateStatusBarIcon() {
+        guard let button = statusItem.button else { return }
 
-            if manager.activeCount > 0 {
-                Text("\(manager.activeCount)")
-                    .font(.system(size: 10, weight: .bold, design: .rounded))
-                    .monospacedDigit()
-            }
+        let iconName = manager.activeCount > 0 ? "terminal.fill" : "terminal"
+        let image = NSImage(systemSymbolName: iconName, accessibilityDescription: "ShinobiSSH")
+        image?.isTemplate = true
+        button.image = image
+
+        if manager.activeCount > 0 {
+            button.title = " \(manager.activeCount)"
+        } else {
+            button.title = ""
         }
+    }
+
+    @objc private func togglePopover() {
+        if popover.isShown {
+            popover.performClose(nil)
+        } else if let button = statusItem.button {
+            popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+            popover.contentViewController?.view.window?.makeKey()
+        }
+    }
+
+    // MARK: - NSPopoverDelegate
+
+    func popoverShouldClose(_ popover: NSPopover) -> Bool {
+        // Prevent popover from closing when NSOpenPanel or other modal is active
+        if let _ = NSApp.modalWindow {
+            return false
+        }
+        return true
     }
 }

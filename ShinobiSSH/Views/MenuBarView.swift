@@ -1,44 +1,28 @@
 import SwiftUI
 
+enum NavigationState: Equatable {
+    case main
+    case addNew
+    case editing(SSHConnection)
+}
+
 struct MenuBarView: View {
     @ObservedObject var manager: SSHManager
-    @State private var showingAddSheet = false
-    @State private var editingConnection: SSHConnection?
+    @State private var navigationState: NavigationState = .main
     @State private var registeringProcess: SSHProcess?
     @State private var registerName = ""
     @State private var confirmDisconnectAll = false
 
     var body: some View {
-        VStack(spacing: 0) {
-            if !manager.matchedProcesses.isEmpty {
-                activeSection
+        Group {
+            switch navigationState {
+            case .main:
+                mainContent
+            case .addNew:
+                AddConnectionView(manager: manager, onDismiss: { navigationState = .main })
+            case .editing(let connection):
+                AddConnectionView(manager: manager, editing: connection, onDismiss: { navigationState = .main })
             }
-
-            if !manager.savedConnections.isEmpty {
-                if !manager.matchedProcesses.isEmpty {
-                    sectionDivider
-                }
-                savedSection
-            }
-
-            if !manager.unmatchedProcesses.isEmpty {
-                sectionDivider
-                unmatchedSection
-            }
-
-            if manager.activeProcesses.isEmpty && manager.savedConnections.isEmpty {
-                emptyState
-            }
-
-            sectionDivider
-            footerSection
-        }
-        .frame(width: 320)
-        .sheet(isPresented: $showingAddSheet) {
-            AddConnectionView(manager: manager)
-        }
-        .sheet(item: $editingConnection) { connection in
-            AddConnectionView(manager: manager, editing: connection)
         }
         .alert("Register Connection", isPresented: Binding(
             get: { registeringProcess != nil },
@@ -69,6 +53,36 @@ struct MenuBarView: View {
         } message: {
             Text("Terminate all \(manager.activeCount) SSH connections?")
         }
+    }
+
+    // MARK: - Main Content
+
+    private var mainContent: some View {
+        VStack(spacing: 0) {
+            if !manager.matchedProcesses.isEmpty {
+                activeSection
+            }
+
+            if !manager.savedConnections.isEmpty {
+                if !manager.matchedProcesses.isEmpty {
+                    sectionDivider
+                }
+                savedSection
+            }
+
+            if !manager.unmatchedProcesses.isEmpty {
+                sectionDivider
+                unmatchedSection
+            }
+
+            if manager.activeProcesses.isEmpty && manager.savedConnections.isEmpty {
+                emptyState
+            }
+
+            sectionDivider
+            footerSection
+        }
+        .frame(width: 320)
     }
 
     // MARK: - Active Connections
@@ -131,7 +145,7 @@ struct MenuBarView: View {
                             manager.disconnect(process: process)
                         }
                     },
-                    onEdit: { editingConnection = connection },
+                    onEdit: { navigationState = .editing(connection) },
                     onDelete: { manager.deleteConnection(connection) }
                 )
             }
@@ -180,7 +194,7 @@ struct MenuBarView: View {
     private var footerSection: some View {
         HStack {
             Button {
-                showingAddSheet = true
+                navigationState = .addNew
             } label: {
                 Label("New", systemImage: "plus")
                     .font(.caption)

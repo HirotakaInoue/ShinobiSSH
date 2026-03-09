@@ -3,7 +3,7 @@ import Combine
 
 struct AddConnectionView: View {
     @ObservedObject var manager: SSHManager
-    @Environment(\.dismiss) private var dismiss
+    let onDismiss: () -> Void
 
     @State private var name: String
     @State private var host: String
@@ -13,14 +13,13 @@ struct AddConnectionView: View {
     @State private var localForwards: [LocalForward]
     @State private var noRemoteCommand: Bool
     @State private var forceIPv4: Bool
-    @State private var showSSHOptions = false
-    @State private var showPortForwarding = false
 
     private let editingID: UUID?
     private let isEditing: Bool
 
-    init(manager: SSHManager, editing: SSHConnection? = nil) {
+    init(manager: SSHManager, editing: SSHConnection? = nil, onDismiss: @escaping () -> Void) {
         self.manager = manager
+        self.onDismiss = onDismiss
         self.editingID = editing?.id
         self.isEditing = editing != nil
         _name = State(initialValue: editing?.name ?? "")
@@ -31,8 +30,6 @@ struct AddConnectionView: View {
         _localForwards = State(initialValue: editing?.localForwards ?? [])
         _noRemoteCommand = State(initialValue: editing?.noRemoteCommand ?? false)
         _forceIPv4 = State(initialValue: editing?.forceIPv4 ?? false)
-        _showSSHOptions = State(initialValue: editing?.noRemoteCommand == true || editing?.forceIPv4 == true)
-        _showPortForwarding = State(initialValue: !(editing?.localForwards ?? []).isEmpty)
     }
 
     private var isValid: Bool {
@@ -57,7 +54,7 @@ struct AddConnectionView: View {
                 .font(.headline)
             Spacer()
             Button {
-                dismiss()
+                onDismiss()
             } label: {
                 Image(systemName: "xmark.circle.fill")
                     .foregroundColor(.secondary)
@@ -110,6 +107,9 @@ struct AddConnectionView: View {
             }
 
             sshOptionsSection
+
+            Divider()
+
             portForwardingSection
 
             if !host.isEmpty {
@@ -122,35 +122,35 @@ struct AddConnectionView: View {
     // MARK: - SSH Options
 
     private var sshOptionsSection: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            CollapsibleHeader(title: "SSH Options", isExpanded: $showSSHOptions)
+        VStack(alignment: .leading, spacing: 6) {
+            Text("SSH Options")
+                .font(.caption)
+                .foregroundColor(.secondary)
 
-            if showSSHOptions {
-                VStack(alignment: .leading, spacing: 8) {
-                    Toggle(isOn: $noRemoteCommand) {
-                        HStack(spacing: 4) {
-                            Text("-N")
-                                .font(.system(.caption, design: .monospaced))
-                                .fontWeight(.medium)
-                            Text("No remote command")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-                    }
-
-                    Toggle(isOn: $forceIPv4) {
-                        HStack(spacing: 4) {
-                            Text("-4")
-                                .font(.system(.caption, design: .monospaced))
-                                .fontWeight(.medium)
-                            Text("IPv4 only")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
+            HStack(spacing: 16) {
+                Toggle(isOn: $noRemoteCommand) {
+                    HStack(spacing: 2) {
+                        Text("-N")
+                            .font(.system(.caption, design: .monospaced))
+                            .fontWeight(.medium)
+                        Text("No command")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
                     }
                 }
-                .padding(.top, 4)
-                .padding(.leading, 16)
+                .toggleStyle(.checkbox)
+
+                Toggle(isOn: $forceIPv4) {
+                    HStack(spacing: 2) {
+                        Text("-4")
+                            .font(.system(.caption, design: .monospaced))
+                            .fontWeight(.medium)
+                        Text("IPv4 only")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                .toggleStyle(.checkbox)
             }
         }
     }
@@ -158,57 +158,64 @@ struct AddConnectionView: View {
     // MARK: - Port Forwarding
 
     private var portForwardingSection: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            CollapsibleHeader(title: "Port Forwarding (-L)", isExpanded: $showPortForwarding)
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text("Port Forwarding (-L)")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
 
-            if showPortForwarding {
-                VStack(spacing: 8) {
-                    ForEach(Array(localForwards.enumerated()), id: \.element.id) { index, forward in
-                        HStack(spacing: 4) {
-                            TextField("Local", text: Binding(
-                                get: { String(localForwards[index].localPort) },
-                                set: { localForwards[index].localPort = Int($0) ?? 0 }
-                            ))
-                            .textFieldStyle(.roundedBorder)
-                            .frame(width: 60)
+                Spacer()
 
-                            Text(":")
-                                .foregroundColor(.secondary)
-
-                            TextField("Remote Host", text: $localForwards[index].remoteHost)
-                                .textFieldStyle(.roundedBorder)
-
-                            Text(":")
-                                .foregroundColor(.secondary)
-
-                            TextField("Port", text: Binding(
-                                get: { String(localForwards[index].remotePort) },
-                                set: { localForwards[index].remotePort = Int($0) ?? 0 }
-                            ))
-                            .textFieldStyle(.roundedBorder)
-                            .frame(width: 60)
-
-                            Button {
-                                localForwards.remove(at: index)
-                            } label: {
-                                Image(systemName: "minus.circle.fill")
-                                    .foregroundColor(.red)
-                            }
-                            .buttonStyle(.plain)
-                        }
+                Button {
+                    localForwards.append(LocalForward())
+                } label: {
+                    Image(systemName: "plus.circle")
                         .font(.caption)
-                    }
+                        .foregroundColor(.accentColor)
+                }
+                .buttonStyle(.plain)
+            }
+
+            ForEach(Array(localForwards.enumerated()), id: \.element.id) { index, forward in
+                HStack(spacing: 4) {
+                    TextField("Local", text: Binding(
+                        get: { String(localForwards[index].localPort) },
+                        set: { localForwards[index].localPort = Int($0) ?? 0 }
+                    ))
+                    .textFieldStyle(.roundedBorder)
+                    .frame(width: 60)
+
+                    Text(":")
+                        .foregroundColor(.secondary)
+
+                    TextField("Remote Host", text: $localForwards[index].remoteHost)
+                        .textFieldStyle(.roundedBorder)
+
+                    Text(":")
+                        .foregroundColor(.secondary)
+
+                    TextField("Port", text: Binding(
+                        get: { String(localForwards[index].remotePort) },
+                        set: { localForwards[index].remotePort = Int($0) ?? 0 }
+                    ))
+                    .textFieldStyle(.roundedBorder)
+                    .frame(width: 60)
 
                     Button {
-                        localForwards.append(LocalForward())
+                        localForwards.remove(at: index)
                     } label: {
-                        Label("Add Forward", systemImage: "plus.circle")
-                            .font(.caption)
+                        Image(systemName: "minus.circle.fill")
+                            .foregroundColor(.red)
                     }
                     .buttonStyle(.plain)
                 }
-                .padding(.top, 4)
-                .padding(.leading, 16)
+                .font(.caption)
+            }
+
+            if localForwards.isEmpty {
+                Text("No port forwards configured")
+                    .font(.caption2)
+                    .foregroundColor(.secondary.opacity(0.6))
             }
         }
     }
@@ -237,14 +244,14 @@ struct AddConnectionView: View {
                        let conn = manager.savedConnections.first(where: { $0.id == id }) {
                         manager.deleteConnection(conn)
                     }
-                    dismiss()
+                    onDismiss()
                 }
             }
 
             Spacer()
 
             Button("Cancel") {
-                dismiss()
+                onDismiss()
             }
             .keyboardShortcut(.cancelAction)
 
@@ -276,7 +283,7 @@ struct AddConnectionView: View {
             manager.addConnection(connection)
         }
 
-        dismiss()
+        onDismiss()
     }
 
     private func buildPreviewCommand() -> String {
@@ -318,33 +325,6 @@ struct AddConnectionView: View {
         if panel.runModal() == .OK, let url = panel.url {
             identityFile = url.path
         }
-    }
-}
-
-// MARK: - Collapsible Header
-
-private struct CollapsibleHeader: View {
-    let title: String
-    @Binding var isExpanded: Bool
-
-    var body: some View {
-        Button {
-            withAnimation(.easeInOut(duration: 0.15)) {
-                isExpanded.toggle()
-            }
-        } label: {
-            HStack(spacing: 4) {
-                Image(systemName: "chevron.right")
-                    .font(.caption2)
-                    .rotationEffect(.degrees(isExpanded ? 90 : 0))
-                Text(title)
-                    .font(.caption)
-                Spacer()
-            }
-            .foregroundColor(.secondary)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
     }
 }
 
