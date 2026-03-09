@@ -42,6 +42,22 @@ final class ProcessMonitor {
         return launchInTerminal(app: termApp, connection: connection)
     }
 
+    func launchSSHBackground(connection: SSHConnection) -> Int32? {
+        let args = connection.sshCommand
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: args[0])
+        process.arguments = Array(args.dropFirst())
+        process.standardInput = FileHandle.nullDevice
+        process.standardOutput = FileHandle.nullDevice
+        process.standardError = FileHandle.nullDevice
+        do {
+            try process.run()
+            return Int32(process.processIdentifier)
+        } catch {
+            return nil
+        }
+    }
+
     private func launchInTerminal(app: String, connection: SSHConnection) -> Int32? {
         let sshArgs = connection.sshCommand
         let sshCommand = sshArgs.map { escapeForAppleScript($0) }.joined(separator: " ")

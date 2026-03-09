@@ -111,6 +111,22 @@ final class SSHManager: ObservableObject {
         }
     }
 
+    func connectBackground(_ connection: SSHConnection) {
+        lastError = nil
+        backgroundQueue.async { [weak self] in
+            guard let self else { return }
+            if self.monitor.launchSSHBackground(connection: connection) != nil {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                    self.refreshProcesses()
+                }
+            } else {
+                DispatchQueue.main.async {
+                    self.lastError = "Failed to launch background SSH connection"
+                }
+            }
+        }
+    }
+
     func disconnect(process: SSHProcess) {
         lastError = nil
         let pid = process.pid

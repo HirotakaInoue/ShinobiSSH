@@ -140,6 +140,7 @@ struct MenuBarView: View {
                     connection: connection,
                     isConnected: manager.isConnected(connection),
                     onConnect: { manager.connect(connection) },
+                    onConnectBackground: { manager.connectBackground(connection) },
                     onDisconnect: {
                         if let process = manager.processFor(connection) {
                             manager.disconnect(process: process)
@@ -313,6 +314,7 @@ struct SavedConnectionRow: View {
     let connection: SSHConnection
     let isConnected: Bool
     let onConnect: () -> Void
+    let onConnectBackground: () -> Void
     let onDisconnect: () -> Void
     let onEdit: () -> Void
     let onDelete: () -> Void
@@ -360,13 +362,23 @@ struct SavedConnectionRow: View {
                                 .foregroundColor(.green)
                         }
                         .buttonStyle(.plain)
+                        .help("Open in Terminal")
+
+                        Button(action: onConnectBackground) {
+                            Image(systemName: "network")
+                                .font(.system(size: 14))
+                                .foregroundColor(.blue)
+                        }
+                        .buttonStyle(.plain)
+                        .help("Run in Background")
                     }
 
                     Menu {
                         if isConnected {
                             Button("Disconnect", action: onDisconnect)
                         } else {
-                            Button("Connect", action: onConnect)
+                            Button("Open in Terminal", action: onConnect)
+                            Button("Run in Background", action: onConnectBackground)
                         }
                         Divider()
                         Button("Edit...", action: onEdit)
