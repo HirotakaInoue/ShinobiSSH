@@ -4,95 +4,107 @@ This file provides guidance for AI assistants working with the Anchor codebase.
 
 ## Project Overview
 
-Anchor is a Terminal User Interface (TUI) tool written in Rust for managing ports and SSH tunnels on macOS. It uses `lsof` for port detection, `ssh` for tunneling, and `ratatui`/`crossterm` for the terminal interface.
+Anchor is a native macOS menu bar application for managing SSH connections. It monitors running SSH processes, allows one-click connect/disconnect, and persists saved connections to disk.
 
-- **Language**: Rust (Edition 2024)
-- **Platform**: macOS only (relies on `lsof` and macOS-specific command output)
-- **Config location**: `~/.config/anchor/tunnels.json`
+- **Language**: Swift 5.9+ / SwiftUI
+- **Platform**: macOS 13.0 (Ventura) or later
+- **UI**: Menu bar popover (`MenuBarExtra` with `.window` style)
+- **Config location**: `~/.config/anchor/connections.json`
 
 ## Build & Run Commands
 
+### Xcode (recommended)
+
 ```bash
-cargo build                # Debug build
-cargo build --release      # Optimized release build (LTO + strip)
-cargo run                  # Run in debug mode
-cargo clippy               # Lint checks
-cargo fmt                  # Format code
-cargo fmt -- --check       # Check formatting without modifying
-cargo test                 # Run tests (none currently exist)
+brew install xcodegen        # Install XcodeGen (one-time)
+xcodegen generate            # Generate Anchor.xcodeproj
+open Anchor.xcodeproj        # Open in Xcode, then Cmd+R
 ```
 
-Install after building:
+### Command Line (Swift Package Manager)
+
 ```bash
-cp target/release/anchor /usr/local/bin/
+cd Anchor
+swift build                  # Debug build
+swift build -c release       # Release build → .build/release/Anchor
+swift test                   # Run tests (none currently exist)
 ```
 
 ## Project Structure
 
 ```
-src/
-├── main.rs    - Entry point, terminal setup, event loop (crossterm events)
-├── app.rs     - Application state (App struct), business logic, input handling
-├── ui.rs      - TUI rendering with ratatui (tables, dialogs, layout)
-├── port.rs    - Port detection via lsof parsing (PortInfo struct)
-└── tunnel.rs  - SSH tunnel management and JSON persistence (TunnelConfig, TunnelManager)
+Anchor/
+├── AnchorApp.swift                - Entry point, MenuBarExtra setup
+├── Package.swift                  - Swift Package Manager config
+├── Models/
+│   ├── SSHConnection.swift        - Saved connection model (Codable)
+│   └── SSHProcess.swift           - Running SSH process model, command parser
+├── Services/
+│   ├── SSHManager.swift           - Central state (ObservableObject), orchestrates all operations
+│   ├── ConnectionStore.swift      - JSON persistence for saved connections
+│   └── ProcessMonitor.swift       - SSH process detection (ps), launch (AppleScript), termination
+└── Views/
+    ├── MenuBarView.swift          - Main popover UI (active/saved/unmatched sections)
+    └── AddConnectionView.swift    - Add/edit connection form
 ```
 
 ## Architecture
 
-The app follows a single-threaded event loop with clear separation of concerns:
+The app follows an MVVM-like pattern centered around `SSHManager` as the single source of truth:
 
-- **main.rs** → Sets up the terminal, runs a 250ms polling event loop, dispatches keyboard events to `app.rs`, calls `ui::draw()` each frame
-- **app.rs** → Central state container (`App` struct). Holds all UI state (current tab, selection index, dialogs) and data (ports list, tunnel manager). All state mutations happen here
-- **ui.rs** → Pure rendering layer. Reads `App` state and draws to the terminal frame. No state mutations
-- **port.rs** → Executes `lsof` to discover TCP/UDP ports, parses output into `PortInfo` structs
-- **tunnel.rs** → Manages SSH tunnel lifecycle (connect/disconnect via subprocess), persists config to JSON
+- **AnchorApp.swift** → Creates `MenuBarExtra` with a window-style popover. Instantiates `SSHManager` as `@StateObject`
+- **SSHManager** → `ObservableObject` holding `@Published` state (`savedConnections`, `activeProcesses`, `lastError`). Owns `ConnectionStore` and `ProcessMonitor`. Polls SSH processes every 3 seconds via `Timer`. Process detection runs on a background `DispatchQueue`
+- **ConnectionStore** → Reads/writes `[SSHConnection]` to `~/.config/anchor/connections.json`
+- **ProcessMonitor** → Executes `ps -eo pid,command` to find SSH processes, parses output into `SSHProcess` structs. Launches SSH via AppleScript (Terminal.app or iTerm). Terminates processes with `SIGTERM`/`SIGKILL`
+- **MenuBarView** → Main UI with three sections: Active (matched), Connections (saved), Other SSH (unmatched). Hover reveals action buttons
+- **AddConnectionView** → Form for creating/editing connections with live command preview
 
-Data flow: `main.rs` (events) → `app.rs` (state mutation) → `ui.rs` (render)
+Data flow: `ProcessMonitor` (detection) → `SSHManager` (state) → `MenuBarView` (render)
 
 ## Key Types
 
-- `App` (app.rs) — Main state container with ports, tunnels, tab state, dialogs
-- `AppTab` (app.rs) — Enum: `Ports`, `Tunnels`
-- `InputMode` (app.rs) — Multi-step tunnel creation dialog state
-- `PendingAction` (app.rs) — Confirmation dialog actions (kill process, delete tunnel)
-- `PortInfo` (port.rs) — Parsed port entry (port, pid, process, protocol, state, address)
-- `TunnelConfig` (tunnel.rs) — Individual tunnel config, serialized to JSON
-- `TunnelManager` (tunnel.rs) — Collection of tunnels with load/save to disk
+- `SSHConnection` (Models/) — Saved connection config: name, host, user, port, identityFile. `Codable` for JSON persistence
+- `SSHProcess` (Models/) — Running SSH process: pid, parsed host/user/port from command string. `matchedConnectionID` links to a saved connection
+- `SSHManager` (Services/) — Central `ObservableObject`. Manages CRUD for connections, connect/disconnect actions, process monitoring
+- `ConnectionStore` (Services/) — JSON file I/O for `[SSHConnection]`
+- `ProcessMonitor` (Services/) — System interaction: `ps` parsing, AppleScript SSH launch, process termination
 
 ## Dependencies
 
-| Crate | Purpose |
-|-------|---------|
-| `ratatui` 0.29 | TUI framework (widgets, layout, styling) |
-| `crossterm` 0.29 | Terminal control (raw mode, events, alternate screen) |
-| `anyhow` 1.0 | Error handling with `Result<T>` propagation |
-| `serde` 1.0 | Serialization/deserialization (derive macros) |
-| `serde_json` 1.0 | JSON persistence for tunnel configs |
-| `dirs` 6.0 | Platform-specific config directory resolution |
-| `tokio` 1.48 | Async runtime (included but not actively used) |
+Swift Package Manager (`Package.swift`):
+
+| Package | Purpose |
+|---------|---------|
+| (none)  | Uses only Apple frameworks (SwiftUI, Foundation, Combine) |
+
+External tools:
+
+| Tool | Purpose |
+|------|---------|
+| XcodeGen | Generates `.xcodeproj` from `project.yml` |
 
 ## Code Conventions
 
-- **Error handling**: Use `anyhow::Result<T>` with `?` propagation. Surface errors to users via the status bar message
-- **Naming**: snake_case for functions/variables, PascalCase for types/enums
-- **Module size**: Keep modules focused and under ~350 lines
-- **State management**: All mutable state lives in `App` struct. UI layer is read-only
-- **Serde**: Use `#[serde(skip)]` for non-persistent fields (e.g., process PIDs)
-- **External commands**: Execute via `std::process::Command`, parse stdout
-- **No async**: Despite tokio dependency, the codebase uses synchronous/blocking operations
+- **State management**: All mutable state lives in `SSHManager` (`@Published` properties). Views are read-only observers
+- **Background work**: Process monitoring runs on a dedicated `DispatchQueue(qos: .utility)`. UI updates dispatch back to main queue
+- **Error handling**: Errors surface via `SSHManager.lastError` displayed in the footer
+- **Naming**: Swift standard conventions (camelCase properties, PascalCase types)
+- **Process detection**: Uses `ps -eo pid,command` and filters for `ssh` executables (excludes sshd, ssh-agent, etc.)
+- **SSH launch**: Uses AppleScript to open Terminal.app or iTerm (auto-detected by checking running processes)
+- **No async/await**: Uses `DispatchQueue` and `Timer` for concurrency
 
 ## Testing
 
 No automated tests currently exist. When adding tests:
 
-- Use Rust's built-in `#[cfg(test)]` module pattern within each source file
-- Port parsing logic in `port.rs` is a good candidate for unit tests
-- Tunnel config serialization in `tunnel.rs` is testable without system dependencies
-- UI rendering and event loop are harder to test in isolation
+- `SSHProcess.parseSSHCommand` is a good candidate for unit tests (pure function, string parsing)
+- `ConnectionStore` load/save can be tested with a temp directory
+- `SSHManager` business logic (matching processes to connections) is testable with mock data
+- UI components are harder to test in isolation
 
 ## System Requirements
 
-- macOS (uses `lsof -iTCP -iUDP -nP` for port detection)
-- SSH client (for tunnel management)
-- Rust 1.70+ toolchain
+- macOS 13.0+ (Ventura)
+- Xcode 15+ (for building)
+- SSH client (pre-installed on macOS)
+- Terminal.app or iTerm (for launching SSH sessions)
